@@ -21,10 +21,10 @@ import (
 )
 
 func main() {
-  // configure cognito srp
+	// configure cognito srp
 	csrp, _ := cognitosrp.NewCognitoSRP("user", "pa55w0rd", "eu-west-1_myPoolId", "client", nil)
 
-  // configure cognito identity provider
+	// configure cognito identity provider
 	cfg, _ := external.LoadDefaultAWSConfig()
 	cfg.Region = endpoints.EuWest1RegionID
 	svc := cip.New(cfg)
