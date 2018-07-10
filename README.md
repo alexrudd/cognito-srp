@@ -27,6 +27,7 @@ func main() {
 	// configure cognito identity provider
 	cfg, _ := external.LoadDefaultAWSConfig()
 	cfg.Region = endpoints.EuWest1RegionID
+	cfg.Credentials = aws.AnonymousCredentials
 	svc := cip.New(cfg)
 
 	// initiate auth
