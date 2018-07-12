@@ -88,7 +88,7 @@ func Test_GetSecretHash(t *testing.T) {
 	cs := "clientSecret"
 	csrp, _ := NewCognitoSRP("test", "test", "eu-west-1_myPool", "123abd", &cs)
 
-	hash, err := csrp.GetSecretHash()
+	hash, err := csrp.GetSecretHash("test")
 	if err != nil {
 		return
 	}
@@ -98,7 +98,7 @@ func Test_GetSecretHash(t *testing.T) {
 	}
 
 	csrp.clientSecret = nil
-	_, err = csrp.GetSecretHash()
+	_, err = csrp.GetSecretHash("test")
 	if err == nil {
 		t.Fatal("GetSecretHash should error on nil client secret")
 	}
