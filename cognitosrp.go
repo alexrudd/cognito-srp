@@ -105,18 +105,18 @@ func (csrp *CognitoSRP) GetAuthParams() map[string]string {
 		"SRP_A":    bigToHex(csrp.bigA),
 	}
 	if csrp.clientSecret != nil {
-		params["SECRET_HASH"], _ = csrp.GetSecretHash()
+		params["SECRET_HASH"], _ = csrp.GetSecretHash(csrp.username)
 	}
 	return params
 }
 
 // GetSecretHash returns the secret hash string required to make certain
 // Cognito Identity Provider API calls (if client is configured with a secret)
-func (csrp *CognitoSRP) GetSecretHash() (string, error) {
+func (csrp *CognitoSRP) GetSecretHash(username string) (string, error) {
 	if csrp.clientSecret == nil {
 		return "", fmt.Errorf("unable to create secret hash as client secret has not been configured")
 	}
-	msg := csrp.username + csrp.clientId
+	msg := username + csrp.clientId
 	key := []byte(*csrp.clientSecret)
 	h := hmac.New(sha256.New, key)
 	h.Write([]byte(msg))
@@ -127,6 +127,7 @@ func (csrp *CognitoSRP) GetSecretHash() (string, error) {
 // PasswordVerifierChallenge returns a github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider.RespondToAuthChallengeInput
 // object which can be used to fulfil a PASSWORD_VERIFIER Cognito challenge
 func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]string, ts time.Time) (*cip.RespondToAuthChallengeInput, error) {
+	internalUsername := challengeParms["USERNAME"]
 	userId := challengeParms["USER_ID_FOR_SRP"]
 	saltHex := challengeParms["SALT"]
 	srpBHex := challengeParms["SRP_B"]
@@ -145,12 +146,12 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]stri
 	signature := base64.StdEncoding.EncodeToString(hmacObj.Sum(nil))
 	response := map[string]string{
 		"TIMESTAMP":                   timestamp,
-		"USERNAME":                    userId,
+		"USERNAME":                    internalUsername,
 		"PASSWORD_CLAIM_SECRET_BLOCK": secretBlockB64,
 		"PASSWORD_CLAIM_SIGNATURE":    signature,
 	}
 	if csrp.clientSecret != nil {
-		response["SECRET_HASH"], _ = csrp.GetSecretHash()
+		response["SECRET_HASH"], _ = csrp.GetSecretHash(internalUsername)
 	}
 
 	return &cip.RespondToAuthChallengeInput{
