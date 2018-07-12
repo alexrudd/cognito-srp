@@ -1,5 +1,7 @@
 # cognito-srp
 
+[![Build Status](https://travis-ci.org/AlexRudd/cognito-srp.svg?branch=master)](https://travis-ci.org/AlexRudd/cognito-srp)
+
 This is almost a direct port of [capless/warrant](https://github.com/capless/warrant/blob/master/warrant/aws_srp.py)
 
 All crypto functions are tested against equivalent values produced by warrant
