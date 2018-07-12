@@ -116,16 +116,16 @@ func Test_PasswordVerifierChallenge(t *testing.T) {
 		"SECRET_BLOCK":    base64.StdEncoding.EncodeToString([]byte("secretssecrestssecrets")),
 	}
 
-	reqin, _ := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 1, 0, 0, time.Local))
+	reqin, _ := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 1, 0, 0, time.UTC))
 
-	expected := "GmnNxv2crXq27FqfkMUoljLdaW/xzwvherSL/Ul7e+I="
+	expected := "tdvQu/Li/qWl8Nni0aFPs+MwY4rvKZm0kSMrGIMSUHk="
 	if reqin.ChallengeResponses["PASSWORD_CLAIM_SIGNATURE"] != expected {
 		t.Fatalf("actual PASSWORD_CLAIM_SIGNATURE: %s, did not match expected PASSWORD_CLAIM_SIGNATURE: %s", reqin.ChallengeResponses["PASSWORD_CLAIM_SIGNATURE"], expected)
 	}
 
 	// Bad challenge params
 	challengeParmas["SECRET_BLOCK"] = "not base64 encoded"
-	_, err := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 46, 0, 0, time.Local))
+	_, err := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 46, 0, 0, time.UTC))
 	if err == nil {
 		t.Fatal("PasswordVerifierChallenge should error on bad 'SECRET_BLOCK'")
 	}
