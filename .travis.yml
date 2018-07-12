@@ -1,3 +1,15 @@
 language: go
 go:
   - "1.10.x"
+install:
+  - go get -t ./...
+  - go get -v github.com/codeclimate/test-reporter
+before_script:
+  - test-reporter before-build
+script:
+  - go test -coverprofile c.out
+after_script:
+  - test-reporter after-build --coverage-input-type gocov --exit-code $TRAVIS_TEST_RESULT
+env:
+  global:
+    - secure: "b9cbUMWJUu0TI5nyzNXdRrDhQpOSEyNuQNQWA0VxVIohLQMQLWAu1552H1NnUMljVEkIB+qYa9x/QPURcC0Z4kselTW9oxAH1Fktj/k8BzZFZIuCfJomTMzGKzbg3irJOYIyqwbMS+yVjZkYTH/HX+H3ucHdxoQN3rmvvVN3bnZIGvGYcWhNWCo5WHvNH2FXKLXOoJJ6TbONhhd7w74kNsORHCUR3EWJPcGaCgqIPudDddwsoUd4jtux5zj2cCZm7zkvkd209+7u0VmkXovjawIDXpglkIc1wXJUJE70PUATXqq7EZyoB3qC+dhHfyCKBgSc2jR7+9ZFyGbnGWsMnbDP52d3uoB67ks9DyhUdHAiNx7kH2jWCSDx+qaBgxBBlrBUwmIZ2KAcUycV1ErvGwrjvCj4HNNFqOdUxwJbYajmtz1uYmH3R9wcRCmrPj0N80gX3IUP3uwhauVZ1+QvoXJU1sHJg4HsGUCig+wO4dTvLCE2uUAAPHHVnxEJzHCkiHnH6skD5JIEX93yj9yQncBYOp7cpx94emJVJmXlkUiTv841UP1LzcTrNmMXXP8BrSQHIvrFNW0lbea0Wn/GtnCIhW1kZDTcW142eGNTuXMs7WkFrmYgxQmfuKJR6Bn5hHFc3KRnbXwxnd3lJ2kUgfzxRtDoo8zpYLBnv+fmM6Y="

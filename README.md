@@ -1,6 +1,8 @@
 # cognito-srp
 
 [![Build Status](https://travis-ci.org/AlexRudd/cognito-srp.svg?branch=master)](https://travis-ci.org/AlexRudd/cognito-srp)
+[![Maintainability](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/maintainability)](https://codeclimate.com/github/AlexRudd/cognito-srp/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/test_coverage)](https://codeclimate.com/github/AlexRudd/cognito-srp/test_coverage)
 
 This is almost a direct port of [capless/warrant](https://github.com/capless/warrant/blob/master/warrant/aws_srp.py)
 
