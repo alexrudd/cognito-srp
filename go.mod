@@ -1,5 +1,3 @@
-module github.com/AlexRudd/cognito-srp
+module github.com/AlexRudd/cognito-srp/v2
 
 go 1.12
-
-require github.com/aws/aws-sdk-go-v2 v0.7.0

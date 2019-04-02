@@ -10,9 +10,6 @@ import (
 	"math/big"
 	"strings"
 	"time"
-
-	"github.com/aws/aws-sdk-go-v2/aws"
-	cip "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
 )
 
 const (
@@ -124,9 +121,10 @@ func (csrp *CognitoSRP) GetSecretHash(username string) (string, error) {
 	return sh, nil
 }
 
-// PasswordVerifierChallenge returns a github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider.RespondToAuthChallengeInput
-// object which can be used to fulfil a PASSWORD_VERIFIER Cognito challenge
-func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]string, ts time.Time) (*cip.RespondToAuthChallengeInput, error) {
+// PasswordVerifierChallenge returns the ChallengeResponses map to be used
+// inside the cognitoidentityprovider.RespondToAuthChallengeInput object which
+// fulfils the PASSWORD_VERIFIER Cognito challenge
+func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]string, ts time.Time) (map[string]string, error) {
 	internalUsername := challengeParms["USERNAME"]
 	userId := challengeParms["USER_ID_FOR_SRP"]
 	saltHex := challengeParms["SALT"]
@@ -154,11 +152,7 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]stri
 		response["SECRET_HASH"], _ = csrp.GetSecretHash(internalUsername)
 	}
 
-	return &cip.RespondToAuthChallengeInput{
-		ChallengeName:      cip.ChallengeNameTypePasswordVerifier,
-		ChallengeResponses: response,
-		ClientId:           aws.String(csrp.clientId),
-	}, nil
+	return response, nil
 }
 
 func (csrp *CognitoSRP) generateRandomSmallA() *big.Int {
