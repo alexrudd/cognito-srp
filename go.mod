@@ -1,4 +1,4 @@
-module github.com/AlexRudd/cognito-srp
+module github.com/alexrudd/cognito-srp
 
 go 1.12
 
