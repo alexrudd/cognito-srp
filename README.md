@@ -1,9 +1,9 @@
 # cognito-srp
 
-[![Build Status](https://travis-ci.org/AlexRudd/cognito-srp.svg?branch=master)](https://travis-ci.org/AlexRudd/cognito-srp)
-[![Go Report Card](https://goreportcard.com/badge/github.com/AlexRudd/cognito-srp)](https://goreportcard.com/report/github.com/AlexRudd/cognito-srp)
-[![Maintainability](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/maintainability)](https://codeclimate.com/github/AlexRudd/cognito-srp/maintainability)
-[![Test Coverage](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/test_coverage)](https://codeclimate.com/github/AlexRudd/cognito-srp/test_coverage)
+[![Build Status](https://travis-ci.org/alexrudd/cognito-srp.svg?branch=master)](https://travis-ci.org/alexrudd/cognito-srp)
+[![Go Report Card](https://goreportcard.com/badge/github.com/alexrudd/cognito-srp)](https://goreportcard.com/report/github.com/alexrudd/cognito-srp)
+[![Maintainability](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/maintainability)](https://codeclimate.com/github/alexrudd/cognito-srp/maintainability)
+[![Test Coverage](https://api.codeclimate.com/v1/badges/30b815a231b657e6ebd6/test_coverage)](https://codeclimate.com/github/alexrudd/cognito-srp/test_coverage)
 
 This is almost a direct port of [capless/warrant](https://github.com/capless/warrant/blob/master/warrant/aws_srp.py)
 
@@ -26,7 +26,7 @@ import (
     "fmt"
     "time"
 
-    "github.com/alexrudd/cognito-srp"
+    "github.com/alexrudd/cognito-srp/v2"
     "github.com/aws/aws-sdk-go-v2/aws"
     "github.com/aws/aws-sdk-go-v2/aws/endpoints"
     "github.com/aws/aws-sdk-go-v2/aws/external"
@@ -53,8 +53,12 @@ func main() {
 
     // respond to password verifier challenge
     if resp.ChallengeName == cip.ChallengeNameTypePasswordVerifier {
-        challengeInput, _ := csrp.PasswordVerifierChallenge(resp.ChallengeParameters, time.Now())
-        chal := svc.RespondToAuthChallengeRequest(challengeInput)
+        challengeResponses, _ := csrp.PasswordVerifierChallenge(resp.ChallengeParameters, time.Now())
+        chal := svc.RespondToAuthChallengeRequest(&cip.RespondToAuthChallengeInput{
+            ChallengeName:      cip.ChallengeNameTypePasswordVerifier,
+            ChallengeResponses: challengeResponses,
+            ClientId:           aws.String(csrp.GetClientId()),
+        })
         resp, _ := chal.Send()
 
         // print the tokens
