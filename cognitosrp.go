@@ -96,14 +96,16 @@ func (csrp *CognitoSRP) GetUserPoolName() string {
 
 // GetAuthParams returns the AuthParms map of values required for make
 // InitiateAuth requests
-func (csrp *CognitoSRP) GetAuthParams() map[string]string {
-	params := map[string]string{
-		"USERNAME": csrp.username,
-		"SRP_A":    bigToHex(csrp.bigA),
+func (csrp *CognitoSRP) GetAuthParams() map[string]*string {
+	params := map[string]*string{
+		"USERNAME": stringPtr(csrp.username),
+		"SRP_A":    stringPtr(bigToHex(csrp.bigA)),
 	}
-	if csrp.clientSecret != nil {
-		params["SECRET_HASH"], _ = csrp.GetSecretHash(csrp.username)
+
+	if secret, err := csrp.GetSecretHash(csrp.username); err == nil {
+		params["SECRET_HASH"] = stringPtr(secret)
 	}
+
 	return params
 }
 
@@ -113,26 +115,35 @@ func (csrp *CognitoSRP) GetSecretHash(username string) (string, error) {
 	if csrp.clientSecret == nil {
 		return "", fmt.Errorf("unable to create secret hash as client secret has not been configured")
 	}
-	msg := username + csrp.clientId
-	key := []byte(*csrp.clientSecret)
-	h := hmac.New(sha256.New, key)
+
+	var (
+		msg = username + csrp.clientId
+		key = []byte(*csrp.clientSecret)
+		h   = hmac.New(sha256.New, key)
+	)
+
 	h.Write([]byte(msg))
+
 	sh := base64.StdEncoding.EncodeToString(h.Sum(nil))
+
 	return sh, nil
 }
 
 // PasswordVerifierChallenge returns the ChallengeResponses map to be used
 // inside the cognitoidentityprovider.RespondToAuthChallengeInput object which
 // fulfils the PASSWORD_VERIFIER Cognito challenge
-func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]string, ts time.Time) (map[string]string, error) {
-	internalUsername := challengeParms["USERNAME"]
-	userId := challengeParms["USER_ID_FOR_SRP"]
-	saltHex := challengeParms["SALT"]
-	srpBHex := challengeParms["SRP_B"]
-	secretBlockB64 := challengeParms["SECRET_BLOCK"]
-	timestamp := ts.In(time.UTC).Format("Mon Jan 2 03:04:05 MST 2006")
+func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]*string, ts time.Time) (map[string]*string, error) {
+	var (
+		internalUsername = stringVal(challengeParms["USERNAME"])
+		userId           = stringVal(challengeParms["USER_ID_FOR_SRP"])
+		saltHex          = stringVal(challengeParms["SALT"])
+		srpBHex          = stringVal(challengeParms["SRP_B"])
+		secretBlockB64   = stringVal(challengeParms["SECRET_BLOCK"])
 
-	hkdf := csrp.getPasswordAuthenticationKey(userId, csrp.password, hexToBig(srpBHex), hexToBig(saltHex))
+		timestamp = ts.In(time.UTC).Format("Mon Jan 2 03:04:05 MST 2006")
+		hkdf      = csrp.getPasswordAuthenticationKey(userId, csrp.password, hexToBig(srpBHex), hexToBig(saltHex))
+	)
+
 	secretBlockBytes, err := base64.StdEncoding.DecodeString(secretBlockB64)
 	if err != nil {
 		return nil, fmt.Errorf("unable to decode challenge parameter 'SECRET_BLOCK', %s", err.Error())
@@ -142,14 +153,15 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]stri
 	hmacObj := hmac.New(sha256.New, hkdf)
 	hmacObj.Write([]byte(msg))
 	signature := base64.StdEncoding.EncodeToString(hmacObj.Sum(nil))
-	response := map[string]string{
-		"TIMESTAMP":                   timestamp,
-		"USERNAME":                    internalUsername,
-		"PASSWORD_CLAIM_SECRET_BLOCK": secretBlockB64,
-		"PASSWORD_CLAIM_SIGNATURE":    signature,
+
+	response := map[string]*string{
+		"TIMESTAMP":                   stringPtr(timestamp),
+		"USERNAME":                    stringPtr(internalUsername),
+		"PASSWORD_CLAIM_SECRET_BLOCK": stringPtr(secretBlockB64),
+		"PASSWORD_CLAIM_SIGNATURE":    stringPtr(signature),
 	}
-	if csrp.clientSecret != nil {
-		response["SECRET_HASH"], _ = csrp.GetSecretHash(internalUsername)
+	if secret, err := csrp.GetSecretHash(csrp.username); err == nil {
+		response["SECRET_HASH"] = stringPtr(secret)
 	}
 
 	return response, nil
@@ -157,6 +169,7 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]stri
 
 func (csrp *CognitoSRP) generateRandomSmallA() *big.Int {
 	randomLongInt := getRandom(128)
+
 	return big.NewInt(0).Mod(randomLongInt, csrp.bigN)
 }
 
@@ -165,19 +178,22 @@ func (csrp *CognitoSRP) calculateA() *big.Int {
 	if big.NewInt(0).Mod(bigA, csrp.bigN).Cmp(big.NewInt(0)) == 0 {
 		panic("Safety check for A failed. A must not be divisable by N")
 	}
+
 	return bigA
 }
 
 func (csrp *CognitoSRP) getPasswordAuthenticationKey(username, password string, bigB, salt *big.Int) []byte {
-	userPass := fmt.Sprintf("%s%s:%s", csrp.poolName, username, password)
-	userPassHash := hashSha256([]byte(userPass))
+	var (
+		userPass     = fmt.Sprintf("%s%s:%s", csrp.poolName, username, password)
+		userPassHash = hashSha256([]byte(userPass))
 
-	uVal := calculateU(csrp.bigA, bigB)
-	xVal := hexToBig(hexHash(padHex(salt.Text(16)) + userPassHash))
-	gModPowXN := big.NewInt(0).Exp(csrp.g, xVal, csrp.bigN)
-	intVal1 := big.NewInt(0).Sub(bigB, big.NewInt(0).Mul(csrp.k, gModPowXN))
-	intVal2 := big.NewInt(0).Add(csrp.a, big.NewInt(0).Mul(uVal, xVal))
-	sVal := big.NewInt(0).Exp(intVal1, intVal2, csrp.bigN)
+		uVal      = calculateU(csrp.bigA, bigB)
+		xVal      = hexToBig(hexHash(padHex(salt.Text(16)) + userPassHash))
+		gModPowXN = big.NewInt(0).Exp(csrp.g, xVal, csrp.bigN)
+		intVal1   = big.NewInt(0).Sub(bigB, big.NewInt(0).Mul(csrp.k, gModPowXN))
+		intVal2   = big.NewInt(0).Add(csrp.a, big.NewInt(0).Mul(uVal, xVal))
+		sVal      = big.NewInt(0).Exp(intVal1, intVal2, csrp.bigN)
+	)
 
 	return computeHKDF(padHex(sVal.Text(16)), padHex(bigToHex(uVal)))
 }
@@ -185,11 +201,13 @@ func (csrp *CognitoSRP) getPasswordAuthenticationKey(username, password string, 
 func hashSha256(buf []byte) string {
 	a := sha256.New()
 	a.Write(buf)
+
 	return hex.EncodeToString(a.Sum(nil))
 }
 
 func hexHash(hexStr string) string {
 	buf, _ := hex.DecodeString(hexStr)
+
 	return hashSha256(buf)
 }
 
@@ -198,6 +216,7 @@ func hexToBig(hexStr string) *big.Int {
 	if !ok {
 		panic(fmt.Sprintf("unable to covert \"%s\" to big Int", hexStr))
 	}
+
 	return i
 }
 
@@ -208,6 +227,7 @@ func bigToHex(val *big.Int) string {
 func getRandom(n int) *big.Int {
 	b := make([]byte, n)
 	rand.Read(b)
+
 	return hexToBig(hex.EncodeToString(b))
 }
 
@@ -217,6 +237,7 @@ func padHex(hexStr string) string {
 	} else if strings.Contains("89ABCDEFabcdef", string(hexStr[0])) {
 		hexStr = fmt.Sprintf("00%s", hexStr)
 	}
+
 	return hexStr
 }
 
@@ -231,9 +252,22 @@ func computeHKDF(ikm, salt string) []byte {
 	extractor = hmac.New(sha256.New, prk)
 	extractor.Write(infoBitsUpdate)
 	hmacHash := extractor.Sum(nil)
+
 	return hmacHash[:16]
 }
 
 func calculateU(bigA, bigB *big.Int) *big.Int {
 	return hexToBig(hexHash(padHex(bigA.Text(16)) + padHex(bigB.Text(16))))
+}
+
+func stringPtr(s string) *string {
+	return &s
+}
+
+func stringVal(s *string) string {
+	if s == nil {
+		return ""
+	}
+
+	return *s
 }

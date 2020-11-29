@@ -9,13 +9,8 @@ This is almost a direct port of [capless/warrant](https://github.com/capless/war
 
 All crypto functions are tested against equivalent values produced by warrant
 
-## v2
-
-The version of this package in the `master` branch makes the assumption that it will be used directly with `aws-sdk-go-v2`. Because of this it intentionally leaks types from the aws package as part of its public API. This has the advantage of reducing code (slightly), but carries the larger disadvantages of complicating dependencies.
-
-It is recommended you use version 2 of this package located in the `v2` branch, though for now both versions will be maintained.
-
-Import v2 of this package with `go get github.com/alexrudd/cognito-srp/v2`and update your imports and code accordingly.
+* v2 - Removed dependency on `aws-sdk-go-v2`
+* v3 - Package and usage have been updated to improve compatibility with latest `aws-sdk-go-v2` API
 
 ## Usage
 
@@ -23,48 +18,58 @@ Import v2 of this package with `go get github.com/alexrudd/cognito-srp/v2`and up
 package main
 
 import (
-    "fmt"
-    "time"
+	"context"
+	"fmt"
+	"time"
 
-    "github.com/alexrudd/cognito-srp/v2"
-    "github.com/aws/aws-sdk-go-v2/aws"
-    "github.com/aws/aws-sdk-go-v2/aws/endpoints"
-    "github.com/aws/aws-sdk-go-v2/aws/external"
-    cip "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	cognitosrp "github.com/alexrudd/cognito-srp/v3"
+
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	cip "github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider"
+	"github.com/aws/aws-sdk-go-v2/service/cognitoidentityprovider/types"
 )
 
 func main() {
-    // configure cognito srp
-    csrp, _ := cognitosrp.NewCognitoSRP("user", "pa55w0rd", "eu-west-1_myPoolId", "client", nil)
+	// configure cognito srp
+	csrp, _ := cognitosrp.NewCognitoSRP("user", "pa55w0rd", "eu-west-1_myPoolId", "client", nil)
 
-    // configure cognito identity provider
-    cfg, _ := external.LoadDefaultAWSConfig()
-    cfg.Region = endpoints.EuWest1RegionID
-    cfg.Credentials = aws.AnonymousCredentials
-    svc := cip.New(cfg)
+	// configure cognito identity provider
+	cfg, _ := config.LoadDefaultConfig(
+		config.WithRegion("eu-west-1"),
+		config.WithCredentialsProvider(aws.AnonymousCredentials{}),
+	)
+	svc := cip.NewFromConfig(cfg)
 
-    // initiate auth
-    req := svc.InitiateAuthRequest(&cip.InitiateAuthInput{
-        AuthFlow:       cip.AuthFlowTypeUserSrpAuth,
-        ClientId:       aws.String(csrp.GetClientId()),
-        AuthParameters: csrp.GetAuthParams(),
-    })
-    resp, _ := req.Send()
+	// initiate auth
+	resp, err := svc.InitiateAuth(context.Background(), &cip.InitiateAuthInput{
+		AuthFlow:       types.AuthFlowTypeUserSrpAuth,
+		ClientId:       aws.String(csrp.GetClientId()),
+		AuthParameters: csrp.GetAuthParams(),
+	})
+	if err != nil {
+		panic(err)
+	}
 
-    // respond to password verifier challenge
-    if resp.ChallengeName == cip.ChallengeNameTypePasswordVerifier {
-        challengeResponses, _ := csrp.PasswordVerifierChallenge(resp.ChallengeParameters, time.Now())
-        chal := svc.RespondToAuthChallengeRequest(&cip.RespondToAuthChallengeInput{
-            ChallengeName:      cip.ChallengeNameTypePasswordVerifier,
-            ChallengeResponses: challengeResponses,
-            ClientId:           aws.String(csrp.GetClientId()),
-        })
-        resp, _ := chal.Send()
+	// respond to password verifier challenge
+	if resp.ChallengeName == types.ChallengeNameTypePasswordVerifier {
+		challengeResponses, _ := csrp.PasswordVerifierChallenge(resp.ChallengeParameters, time.Now())
 
-        // print the tokens
-        fmt.Println(resp.AuthenticationResult)
-    } else {
-        // other challenges await...
-    }
+		resp, err := svc.RespondToAuthChallenge(context.Background(), &cip.RespondToAuthChallengeInput{
+			ChallengeName:      types.ChallengeNameTypePasswordVerifier,
+			ChallengeResponses: challengeResponses,
+			ClientId:           aws.String(csrp.GetClientId()),
+		})
+		if err != nil {
+			panic(err)
+		}
+
+		// print the tokens
+		fmt.Printf("Access Token: %s\n", *resp.AuthenticationResult.AccessToken)
+		fmt.Printf("ID Token: %s\n", *resp.AuthenticationResult.IdToken)
+		fmt.Printf("Refresh Token: %s\n", *resp.AuthenticationResult.RefreshToken)
+	} else {
+		// other challenges await...
+	}
 }
 ```

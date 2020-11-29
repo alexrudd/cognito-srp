@@ -1,3 +1,3 @@
-module github.com/alexrudd/cognito-srp/v2
+module github.com/alexrudd/cognito-srp/v3
 
-go 1.12
+go 1.15
