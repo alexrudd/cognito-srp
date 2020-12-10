@@ -96,14 +96,14 @@ func (csrp *CognitoSRP) GetUserPoolName() string {
 
 // GetAuthParams returns the AuthParms map of values required for make
 // InitiateAuth requests
-func (csrp *CognitoSRP) GetAuthParams() map[string]*string {
-	params := map[string]*string{
-		"USERNAME": stringPtr(csrp.username),
-		"SRP_A":    stringPtr(bigToHex(csrp.bigA)),
+func (csrp *CognitoSRP) GetAuthParams() map[string]string {
+	params := map[string]string{
+		"USERNAME": csrp.username,
+		"SRP_A":    bigToHex(csrp.bigA),
 	}
 
 	if secret, err := csrp.GetSecretHash(csrp.username); err == nil {
-		params["SECRET_HASH"] = stringPtr(secret)
+		params["SECRET_HASH"] = secret
 	}
 
 	return params
@@ -132,13 +132,13 @@ func (csrp *CognitoSRP) GetSecretHash(username string) (string, error) {
 // PasswordVerifierChallenge returns the ChallengeResponses map to be used
 // inside the cognitoidentityprovider.RespondToAuthChallengeInput object which
 // fulfils the PASSWORD_VERIFIER Cognito challenge
-func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]*string, ts time.Time) (map[string]*string, error) {
+func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]string, ts time.Time) (map[string]string, error) {
 	var (
-		internalUsername = stringVal(challengeParms["USERNAME"])
-		userId           = stringVal(challengeParms["USER_ID_FOR_SRP"])
-		saltHex          = stringVal(challengeParms["SALT"])
-		srpBHex          = stringVal(challengeParms["SRP_B"])
-		secretBlockB64   = stringVal(challengeParms["SECRET_BLOCK"])
+		internalUsername = challengeParms["USERNAME"]
+		userId           = challengeParms["USER_ID_FOR_SRP"]
+		saltHex          = challengeParms["SALT"]
+		srpBHex          = challengeParms["SRP_B"]
+		secretBlockB64   = challengeParms["SECRET_BLOCK"]
 
 		timestamp = ts.In(time.UTC).Format("Mon Jan 2 03:04:05 MST 2006")
 		hkdf      = csrp.getPasswordAuthenticationKey(userId, csrp.password, hexToBig(srpBHex), hexToBig(saltHex))
@@ -154,14 +154,14 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]*str
 	hmacObj.Write([]byte(msg))
 	signature := base64.StdEncoding.EncodeToString(hmacObj.Sum(nil))
 
-	response := map[string]*string{
-		"TIMESTAMP":                   stringPtr(timestamp),
-		"USERNAME":                    stringPtr(internalUsername),
-		"PASSWORD_CLAIM_SECRET_BLOCK": stringPtr(secretBlockB64),
-		"PASSWORD_CLAIM_SIGNATURE":    stringPtr(signature),
+	response := map[string]string{
+		"TIMESTAMP":                   timestamp,
+		"USERNAME":                    internalUsername,
+		"PASSWORD_CLAIM_SECRET_BLOCK": secretBlockB64,
+		"PASSWORD_CLAIM_SIGNATURE":    signature,
 	}
 	if secret, err := csrp.GetSecretHash(csrp.username); err == nil {
-		response["SECRET_HASH"] = stringPtr(secret)
+		response["SECRET_HASH"] = secret
 	}
 
 	return response, nil
@@ -258,16 +258,4 @@ func computeHKDF(ikm, salt string) []byte {
 
 func calculateU(bigA, bigB *big.Int) *big.Int {
 	return hexToBig(hexHash(padHex(bigA.Text(16)) + padHex(bigB.Text(16))))
-}
-
-func stringPtr(s string) *string {
-	return &s
-}
-
-func stringVal(s *string) string {
-	if s == nil {
-		return ""
-	}
-
-	return *s
 }

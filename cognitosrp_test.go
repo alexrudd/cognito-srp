@@ -71,15 +71,15 @@ func Test_GetAuthParams(t *testing.T) {
 
 	params := csrp.GetAuthParams()
 
-	if *params["USERNAME"] != csrp.username {
-		t.Errorf("actual USERNAME: %s, did not match expected USERNAME: %s", *params["USERNAME"], csrp.username)
+	if params["USERNAME"] != csrp.username {
+		t.Errorf("actual USERNAME: %s, did not match expected USERNAME: %s", params["USERNAME"], csrp.username)
 	}
-	if *params["SRP_A"] != csrp.bigA.Text(16) {
-		t.Errorf("actual SRP_A: %s, did not match expected SRP_A: %s", *params["SRP_A"], csrp.bigA.Text(16))
+	if params["SRP_A"] != csrp.bigA.Text(16) {
+		t.Errorf("actual SRP_A: %s, did not match expected SRP_A: %s", params["SRP_A"], csrp.bigA.Text(16))
 	}
 	expectedHash := "LoIX/oPJWZzFYv8liJYRo+CHv16FNDY10JlZEDjL3Vg="
-	if *params["SECRET_HASH"] != expectedHash {
-		t.Errorf("actual SECRET_HASH: %s, did not match expected SECRET_HASH: %s", *params["SECRET_HASH"], expectedHash)
+	if params["SECRET_HASH"] != expectedHash {
+		t.Errorf("actual SECRET_HASH: %s, did not match expected SECRET_HASH: %s", params["SECRET_HASH"], expectedHash)
 	}
 }
 
@@ -109,22 +109,22 @@ func Test_PasswordVerifierChallenge(t *testing.T) {
 	csrp, _ := NewCognitoSRP("test", "test", "eu-west-1_myPool", "123abd", &cs)
 	csrp.a = big.NewInt(1234567890)
 	csrp.bigA = csrp.calculateA()
-	challengeParmas := map[string]*string{
-		"USER_ID_FOR_SRP": stringPtr("test"),
-		"SALT":            stringPtr(big.NewInt(1234567890).Text(16)),
-		"SRP_B":           stringPtr(big.NewInt(1234567890).Text(16)),
-		"SECRET_BLOCK":    stringPtr(base64.StdEncoding.EncodeToString([]byte("secretssecrestssecrets"))),
+	challengeParmas := map[string]string{
+		"USER_ID_FOR_SRP": "test",
+		"SALT":            big.NewInt(1234567890).Text(16),
+		"SRP_B":           big.NewInt(1234567890).Text(16),
+		"SECRET_BLOCK":    base64.StdEncoding.EncodeToString([]byte("secretssecrestssecrets")),
 	}
 
 	challResp, _ := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 1, 0, 0, time.UTC))
 
 	expected := "tdvQu/Li/qWl8Nni0aFPs+MwY4rvKZm0kSMrGIMSUHk="
-	if *challResp["PASSWORD_CLAIM_SIGNATURE"] != expected {
-		t.Errorf("actual PASSWORD_CLAIM_SIGNATURE: %s, did not match expected PASSWORD_CLAIM_SIGNATURE: %s", *challResp["PASSWORD_CLAIM_SIGNATURE"], expected)
+	if challResp["PASSWORD_CLAIM_SIGNATURE"] != expected {
+		t.Errorf("actual PASSWORD_CLAIM_SIGNATURE: %s, did not match expected PASSWORD_CLAIM_SIGNATURE: %s", challResp["PASSWORD_CLAIM_SIGNATURE"], expected)
 	}
 
 	// Bad challenge params
-	challengeParmas["SECRET_BLOCK"] = stringPtr("not base64 encoded")
+	challengeParmas["SECRET_BLOCK"] = "not base64 encoded"
 	_, err := csrp.PasswordVerifierChallenge(challengeParmas, time.Date(2018, 7, 10, 11, 46, 0, 0, time.UTC))
 	if err == nil {
 		t.Fatal("PasswordVerifierChallenge should error on bad 'SECRET_BLOCK'")

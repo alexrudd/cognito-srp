@@ -10,7 +10,8 @@ This is almost a direct port of [capless/warrant](https://github.com/capless/war
 All crypto functions are tested against equivalent values produced by warrant
 
 * v2 - Removed dependency on `aws-sdk-go-v2`
-* v3 - Package and usage have been updated to improve compatibility with latest `aws-sdk-go-v2` API
+* v3 - Migrate to `map[string]*string` types for better compatability with `aws-sdk-go-v2`
+* v4 - Migrate back to `map[string]string` types as `aws-sdk-go-v2` reverted their API changes
 
 ## Usage
 
@@ -22,7 +23,7 @@ import (
 	"fmt"
 	"time"
 
-	cognitosrp "github.com/alexrudd/cognito-srp/v3"
+	cognitosrp "github.com/alexrudd/cognito-srp/v4"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
