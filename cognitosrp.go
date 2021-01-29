@@ -160,7 +160,7 @@ func (csrp *CognitoSRP) PasswordVerifierChallenge(challengeParms map[string]stri
 		"PASSWORD_CLAIM_SECRET_BLOCK": secretBlockB64,
 		"PASSWORD_CLAIM_SIGNATURE":    signature,
 	}
-	if secret, err := csrp.GetSecretHash(csrp.username); err == nil {
+	if secret, err := csrp.GetSecretHash(internalUsername); err == nil {
 		response["SECRET_HASH"] = secret
 	}
 
